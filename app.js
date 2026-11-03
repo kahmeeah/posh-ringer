@@ -1,17 +1,17 @@
-const express = require('express')
+import express from 'express';
 const app = express()
 
-const path = require('path');
+import path from 'path';
+import cors from 'cors';
 
 app.use("/", express.static("public"));
 
-// register start & game page routes
-app.get('/start', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'start.html'));
-});
+app.use(cors());
+app.use(express.json());
 
-app.get('/game', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'game.html'));
+// register default route
+app.get('/', (req, res) => {
+    res.send('posh ringer api');
 });
 
 // start server 
@@ -19,3 +19,10 @@ let port = process.env.PORT || 3000;
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
 })
+
+// TODO:
+// 1. make basic game mechanics
+// 2. connect sockets
+// 3. make single 
+// make two player queue w ig waiting for second player screen (make a room)
+// 4. 
