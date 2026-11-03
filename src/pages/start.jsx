@@ -2,7 +2,7 @@ import './css/start.css'
 export default function StartPage() {
         // js goes here
   return (
-    <section className="">
+    <section className="start-scene">
       <div>START PAGE</div>
     </section>
   );
