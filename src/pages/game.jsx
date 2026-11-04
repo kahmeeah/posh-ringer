@@ -13,17 +13,37 @@ export default function GameCanvas({ socket, nickname }) {
 
   const p5ContainerRef = useRef(null);
   const playersRef = useRef({});
+  const activeThrowsRef = useRef([]);
 
   useEffect(() => {
     // when 'update-players' is recived from server
     socket.on("update-players", (serverPlayers) => {
       // client updates to match info from server
+      // ^ in this case: broadcasts all player locations+nicknames
       playersRef.current = serverPlayers;
     });
 
-    //on unmount/cleanup -> stop listening to 'update-players'
+    // when 'player-threw' is received from server
+    socket.on("player-threw", (data) => {
+      // client updates to match info from server
+      // ^ in this case: broadcasts all throws
+      activeThrowsRef.current.push({
+        startX: data.startX,
+        startY: data.startY,
+        targetX: data.targetX,
+        targetY: data.targetY,
+        currentX: data.startX,
+        currentY: data.startY,
+        progress: 0,
+        heightOffset: 0,
+        playerId: data.playerId,
+      });
+    });
+
+    //on unmount/cleanup -> stop listening to the sockets
     return () => {
       socket.off("update-players");
+      socket.off("player-threw");
     };
   }, [socket]);
 
@@ -33,19 +53,6 @@ export default function GameCanvas({ socket, nickname }) {
       let horseshoeSvg;
       let ringerSvg;
       let selectedRinger;
-
-      //horseshoe obj to track starting pos, target pos, and current pos
-      let horseshoe = {
-        active: false,
-        startX: 0,
-        startY: 0,
-        targetX: 0,
-        targetY: 0,
-        currentX: 0,
-        currentY: 0,
-        progress: 0, //
-        heightOffset: 0,
-      };
 
       // async setup w await for assets
       p.setup = async () => {
@@ -62,9 +69,6 @@ export default function GameCanvas({ socket, nickname }) {
 
       // on click -> select ringer target
       p.mousePressed = () => {
-        // only allow click on targets if a throw isn't currently being thrown
-        if (horseshoe.active) return;
-
         ringers.forEach((ringer) => {
           let d = p.dist(p.mouseX, p.mouseY, ringer.x, ringer.y);
           if (d < ringer.radius) {
@@ -140,20 +144,19 @@ export default function GameCanvas({ socket, nickname }) {
           // stop browser from scrolling on spacebar press
           if (e) e.preventDefault();
 
-          // if there isnt a current shoe being thrown & a ring is selected
+          // if a ring is selected
           // then let the current player throw a shoe
-          if (!horseshoe.active && selectedRinger) {
+          if (selectedRinger) {
             let currentPlayer = playersRef.current[socket.id];
             if (!currentPlayer) return;
 
-            horseshoe.active = true; // shoe is being thrown
-            horseshoe.startX = currentPlayer.x + 20; // start 20 pts from players curr x pos
-            horseshoe.startY = currentPlayer.y + 20; // start 20 pts from players curr y pos
-            horseshoe.targetX = selectedRinger.x; // set targetX to match the selectedRinger's x
-            horseshoe.targetY = selectedRinger.y; // set targetY to match the selectedRinger's y
-            horseshoe.currentX = horseshoe.startX; // current starts off at starting pos
-            horseshoe.currentY = horseshoe.startY; // current starts off at starting pos
-            horseshoe.progress = 0; // progress starts at 0, and will be incremented until 1 , where 1 = target is reached
+            // emit/send throw to server to broadcast
+            socket.emit("throw-horseshoe", {
+              startX: currentPlayer.x + 20,
+              startY: currentPlayer.y + 20,
+              targetX: selectedRinger.x,
+              targetY: selectedRinger.y,
+            });
           }
         }
       };
@@ -191,19 +194,20 @@ export default function GameCanvas({ socket, nickname }) {
         p.handleMovement();
 
         // update & draw horseshoe trajectory if its active
-        if (horseshoe.active) {
-          horseshoe.progress += 0.02; //speeed
+        // loop thru and update all active throws in flight
+        activeThrowsRef.current.forEach((t, index) => {
+          t.progress += 0.02; //speeed
 
           //if shoe reaches target / progress = 1
-          if (horseshoe.progress >= 1.0) {
-            horseshoe.progress = 1.0; //stop the progress from going over 1 for maths
-            horseshoe.active = false; // reset var / shoe is no longer moving & wont be drawn on next frame
+          if (t.progress >= 1.0) {
+            t.progress = 1.0; //stop the progress from going over 1 for maths
 
-            if (selectedRinger) {
+            // check hit/miss locally if it's our own throw
+            if (t.playerId === socket.id && selectedRinger) {
               //measure distance btwn where horseshoe landed and the targets radius/hitbox
               let distance = p.dist(
-                horseshoe.currentX,
-                horseshoe.currentY,
+                t.currentX,
+                t.currentY,
                 selectedRinger.x,
                 selectedRinger.y,
               );
@@ -214,34 +218,37 @@ export default function GameCanvas({ socket, nickname }) {
                 console.log("ringer was missed ");
               }
             }
+
+            // remove this.throw from the array once it lands
+            activeThrowsRef.current.splice(index, 1);
           } else {
             // if shoe progess is less than / still moving
             // use lerp to increment x and y pos from starting pos towards target pos
-            horseshoe.currentX = p.lerp(
-              horseshoe.startX,
-              horseshoe.targetX,
-              horseshoe.progress,
+            t.currentX = p.lerp(
+              t.startX,
+              t.targetX,
+              t.progress,
             );
-            horseshoe.currentY = p.lerp(
-              horseshoe.startY,
-              horseshoe.targetY,
-              horseshoe.progress,
+            t.currentY = p.lerp(
+              t.startY,
+              t.targetY,
+              t.progress,
             );
             //projectile throw the shoe
             // throw along a sin curve to look projectileresque
             let throwHeight = -90; // probably have wheelstrength affect this later
-            horseshoe.heightOffset =
-              throwHeight * p.sin(horseshoe.progress * p.PI);
+            t.heightOffset =
+              throwHeight * p.sin(t.progress * p.PI);
           }
 
-          let renderY = horseshoe.currentY + horseshoe.heightOffset; // apply throw curve to the y pos
+          let renderY = t.currentY + t.heightOffset; // apply throw curve to the y pos
           p.imageMode(p.CENTER);
 
           // only draw if the svg has loaded
           if (horseshoeSvg) {
-            p.image(horseshoeSvg, horseshoe.currentX, renderY, 24, 24); // draw to new pos
+            p.image(horseshoeSvg, t.currentX, renderY, 24, 24); // draw to new pos
           }
-        }
+        });
 
         // loop thru players & draw them
         const currentPlayers = playersRef.current;

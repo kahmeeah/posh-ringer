@@ -71,6 +71,18 @@ io.on("connection", (socket) => {
     }
   });
 
+  //listen for when player throws a shoe
+  socket.on("throw-horseshoe", (data) => {
+    // emit throw to everyone
+    io.emit("player-threw", {
+      playerId: socket.id,
+      startX: data.startX,
+      startY: data.startY,
+      targetX: data.targetX,
+      targetY: data.targetY,
+    });
+  });
+
   //Listen for this client to disconnect
   socket.on("disconnect", () => {
     console.log("A client has disconnected: " + socket.id);
