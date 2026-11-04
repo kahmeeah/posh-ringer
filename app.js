@@ -16,7 +16,8 @@ const __dirname = path.dirname(__filename);
 
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
-app.get('*', (req, res) => {
+// Express 5 named wildcard (matches root '/' and all sub-routes)
+app.get('{*splat}', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
