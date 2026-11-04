@@ -1,15 +1,18 @@
 import './css/game.css'
 import { useEffect, useState, useRef } from 'react';
+import p5 from 'p5';
+
 export default function GameCanvas({socket, nickname}) {
     // js goes here
-    const [players, setPlayers] = useState({})
-    const canvasRef = useRef(null)
+
+    const p5ContainerRef = useRef(null);
+    const playersRef = useRef({});
 
     useEffect(() =>{
       // when 'update-players' is recived from server
       socket.on('update-players', (serverPlayers) => {
         // client updates to match info from server
-        setPlayers(serverPlayers)
+        playersRef.current = serverPlayers;
       })
 
       //on unmount/cleanup -> stop listening to 'update-players'
@@ -19,36 +22,48 @@ export default function GameCanvas({socket, nickname}) {
 
     }, [socket])
 
+
     useEffect(() => {
-      const canvas = canvasRef.current
-      const context = canvas.getContext('2d')
+      // create p5 sketch w setup/draw functions as normal
+        const sketch = (p) => {
 
-      // clear canvas evry frame
-      context.clearRect(0, 0, canvas.width, canvas.height);
+            p.setup = () => {
+                p.createCanvas(800, 600);
+            };
 
-      // for each client, 
-      Object.values(players).forEach((player) => {
-      // draw a square
-      context.fillStyle = '#fff'; // 
-      context.fillRect(player.x, player.y, 40, 40);
+            p.draw = () => {
+                p.background(20);
 
-      // draw their nickname
-      context.fillStyle = '#fff';
-      context.font = '14px sans-serif';
-      context.fillText(player.nickname, player.x, player.y - 8);
-    });
+                // loop thru players & draw them
+                const currentPlayers = playersRef.current;
+                Object.values(currentPlayers).forEach((player) => {
+                    // draw squares for now -> replace these w sprites later on
+                    p.fill(255);
+                    p.noStroke();
+                    p.rect(player.x, player.y, 100, 100);
 
-    }, [players])
+                    // draw nicknames over the square
+                    p.fill(255);
+                    p.textSize(14);
+                    p.text(player.nickname, player.x, player.y - 8);
+                });
+            };
+        };
 
+        // mount p5 sketch to container div
+        const myP5 = new p5(sketch, p5ContainerRef.current);
+
+        // cleanup on unmount
+        return () => {
+            myP5.remove();
+        };
+    }, []);
 
   return (
     <section className="game-scene">
       <div>GAME PAGE</div>
-      <canvas 
-        ref={canvasRef} 
-        width={800} 
-        height={600} 
-        style={{ border: '2px solid #333' }}
+      <div 
+      ref={p5ContainerRef} 
       />
     </section>
   );
