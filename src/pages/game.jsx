@@ -26,9 +26,9 @@ export default function GameCanvas({ socket, nickname }) {
   ];
 
   let wheel = {
-    x: 0, 
-    y: 0, 
-    radius: 80, 
+    x: 0,
+    y: 0,
+    radius: 80,
     angle: 0,
     lastAngle: 0,
     power: 0,
@@ -79,11 +79,12 @@ export default function GameCanvas({ socket, nickname }) {
       let ringerSvg;
       let wheelSvg;
       let bgImg;
+      let titleSvg;
       let selectedRinger;
 
       let charImgs = [];
-        let playerSpriteIndexRef = {};
-        let prevPlayerXRef = {}; 
+      let playerSpriteIndexRef = {};
+      let prevPlayerXRef = {};
 
       // async setup w await for assets
       p.setup = async () => {
@@ -93,10 +94,10 @@ export default function GameCanvas({ socket, nickname }) {
         wheel.x = p.width / 2;
         wheel.y = p.height - 120;
 
-
         // async load the svg
         try {
           bgImg = await p.loadImage("/assets/background.png");
+          titleSvg = await p.loadImage("/assets/title.svg");
           horseshoeSvg = await p.loadImage("/assets/horseshoe.svg");
           ringerSvg = await p.loadImage("/assets/pink-ringer.png");
           wheelSvg = await p.loadImage("/assets/wheel.png");
@@ -105,7 +106,6 @@ export default function GameCanvas({ socket, nickname }) {
           charImgs[1] = await p.loadImage("/assets/sprite2.png");
           charImgs[2] = await p.loadImage("/assets/sprite3.png");
           charImgs[3] = await p.loadImage("/assets/sprite4.png");
-
         } catch (err) {
           console.error("failed to load an image or asset:", err);
         }
@@ -131,8 +131,13 @@ export default function GameCanvas({ socket, nickname }) {
 
           // check if the selected ringer is curr on cooldown for this client
           let now = Date.now();
-          if (cooldownsRef.current[selectedRinger.id] && cooldownsRef.current[selectedRinger.id] > now) {
-            let timeLeft = Math.ceil((cooldownsRef.current[selectedRinger.id] - now) / 1000);
+          if (
+            cooldownsRef.current[selectedRinger.id] &&
+            cooldownsRef.current[selectedRinger.id] > now
+          ) {
+            let timeLeft = Math.ceil(
+              (cooldownsRef.current[selectedRinger.id] - now) / 1000,
+            );
             setPopupMessage(`Ringer on cooldown! Wait ${timeLeft}s.`);
             setTimeout(() => setPopupMessage(null), 3000);
             return;
@@ -151,8 +156,13 @@ export default function GameCanvas({ socket, nickname }) {
           if (ringerD < ringer.radius) {
             // check ringer cooldown b4 allowing selection
             let now = Date.now();
-            if (cooldownsRef.current[ringer.id] && cooldownsRef.current[ringer.id] > now) {
-              let timeLeft = Math.ceil((cooldownsRef.current[ringer.id] - now) / 1000);
+            if (
+              cooldownsRef.current[ringer.id] &&
+              cooldownsRef.current[ringer.id] > now
+            ) {
+              let timeLeft = Math.ceil(
+                (cooldownsRef.current[ringer.id] - now) / 1000,
+              );
               setPopupMessage(`Ringer on cooldown! Wait ${timeLeft}s.`);
               setTimeout(() => setPopupMessage(null), 3000);
               return;
@@ -246,11 +256,22 @@ export default function GameCanvas({ socket, nickname }) {
         if (angleDelta > 0) {
           // pushback near max power
           let pushback = Math.max(0.08, 1 - Math.pow(wheel.power / p.PI, 2));
-          wheel.power = p.constrain(wheel.power + angleDelta * 35 * pushback, 0, 100);
+          wheel.power = p.constrain(
+            wheel.power + angleDelta * 35 * pushback,
+            0,
+            100,
+          );
         } else {
           // pushback near 0 power
-          let pushback = Math.max(0.08, 1 - Math.pow((100 - wheel.power) / p.PI, 2));
-          wheel.power = p.constrain(wheel.power + angleDelta * 35 * pushback, 0, 100);
+          let pushback = Math.max(
+            0.08,
+            1 - Math.pow((100 - wheel.power) / p.PI, 2),
+          );
+          wheel.power = p.constrain(
+            wheel.power + angleDelta * 35 * pushback,
+            0,
+            100,
+          );
         }
       };
 
@@ -271,8 +292,16 @@ export default function GameCanvas({ socket, nickname }) {
         let startY = currentPlayer.y + 20;
 
         // always throw in the direction/angle of the selected ringer
-        let angleToRinger = p.atan2(selectedRinger.y - startY, selectedRinger.x - startX);
-        let requiredDist = p.dist(startX, startY, selectedRinger.x, selectedRinger.y);
+        let angleToRinger = p.atan2(
+          selectedRinger.y - startY,
+          selectedRinger.x - startX,
+        );
+        let requiredDist = p.dist(
+          startX,
+          startY,
+          selectedRinger.x,
+          selectedRinger.y,
+        );
 
         // max distance corresponds 2 100 pwoer
         //power determines whether it falls short, far, or it hits it
@@ -283,7 +312,7 @@ export default function GameCanvas({ socket, nickname }) {
         let targetY = startY + Math.sin(angleToRinger) * actualDist;
 
         let baseHeight = -70;
-        let finalThrowHeight = baseHeight * (1 + (wheel.power / 50)); //multiply throw speed and height by power soley for visual affects
+        let finalThrowHeight = baseHeight * (1 + wheel.power / 50); //multiply throw speed and height by power soley for visual affects
 
         // emit/send throw to server to broadcast
         socket.emit("throw-horseshoe", {
@@ -301,7 +330,7 @@ export default function GameCanvas({ socket, nickname }) {
       p.handleWheel = () => {
         p.push();
         p.translate(wheel.x, wheel.y);
-        
+
         // draw wheeeeeeel
         p.rotate(wheel.angle);
         if (wheelSvg) {
@@ -314,19 +343,29 @@ export default function GameCanvas({ socket, nickname }) {
         p.pop();
 
         // power meter
-        let meterWidth = 300; // 
-        let meterHeight = 24; // 
+        let meterWidth = 300; //
+        let meterHeight = 24; //
         let fillWidth = p.map(wheel.power, 0, 100, 0, meterWidth);
-        
+
         p.fill(0, 150);
         p.noStroke();
-        p.rect(wheel.x - meterWidth / 2, wheel.y + 90, meterWidth, meterHeight, 6); 
-        
+        p.rect(
+          wheel.x - meterWidth / 2,
+          wheel.y + 90,
+          meterWidth,
+          meterHeight,
+          6,
+        );
+
         p.fill(255, 180, 50);
-        p.rect(wheel.x - meterWidth / 2, wheel.y + 90, fillWidth, meterHeight, 6); 
-
-      }
-
+        p.rect(
+          wheel.x - meterWidth / 2,
+          wheel.y + 90,
+          fillWidth,
+          meterHeight,
+          6,
+        );
+      };
 
       // old code2 trigger throwing via spacebar (perfect hits everytime)
       // // for now, trigger throw da spacebar
@@ -358,6 +397,21 @@ export default function GameCanvas({ socket, nickname }) {
         if (bgImg) {
           p.imageMode(p.CORNER);
           p.image(bgImg, 0, 0, p.width, p.height);
+        }
+
+        if (titleSvg) {
+          let titleWidth = 100;
+          let titleHeight = 100;
+          let margin = 20;
+
+          p.imageMode(p.CORNER);
+          p.image(
+            titleSvg,
+            p.width - titleWidth - margin,
+            margin - 20,
+            titleWidth,
+            titleHeight,
+          );
         }
 
         // place ringers onto screen
@@ -463,7 +517,9 @@ export default function GameCanvas({ socket, nickname }) {
 
           // assign a random sprite index once per player so it dont reshuffle every frame
           if (playerSpriteIndexRef[id] === undefined) {
-            playerSpriteIndexRef[id] = Math.floor(Math.random() * charImgs.length);
+            playerSpriteIndexRef[id] = Math.floor(
+              Math.random() * charImgs.length,
+            );
           }
 
           // deyermine facing direction by comparing curr X to prev X pos
@@ -502,7 +558,7 @@ export default function GameCanvas({ socket, nickname }) {
           p.fill(255);
           p.textSize(20);
           // p.textAlign(p.CENTER, p.TOP);
-          p.text(player.nickname, player.x, player.y-110);
+          p.text(player.nickname, player.x, player.y - 110);
         });
       };
     };
@@ -518,11 +574,7 @@ export default function GameCanvas({ socket, nickname }) {
 
   return (
     <section className="game-scene" style={{ position: "relative" }}>
-      {popupMessage && (
-        <div className="popup">
-          {popupMessage}
-        </div>
-      )}
+      {popupMessage && <div className="popup">{popupMessage}</div>}
       {/* <div>GAME PAGE</div> */}
       <div ref={p5ContainerRef} />
     </section>

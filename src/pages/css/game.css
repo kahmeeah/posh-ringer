@@ -10,14 +10,15 @@
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(255, 255, 255, 0.85);
-  color: #C8829B;
+  color: #C2369B;
   padding: 12px 28px;
   border-radius: 8px;
   font-size: 18px;
   z-index: 1000;
-  border: 2px solid #FFBED5;
+  border: 5px solid #00CBCE;
   box-shadow: 0 4px 16px rgba(0,0,0,0.6);
   font-family: Verdana, Geneva, Tahoma, sans-serif;
+  font-weight: 550;
   text-align: center;
   pointer-events: none;
 }
