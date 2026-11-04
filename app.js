@@ -12,6 +12,8 @@ app.use("/", express.static("public"));
 app.use(cors());
 app.use(express.json());
 
+const players = {};
+
 // init http server
 const server = createServer(app);
 //init socket.io
@@ -38,13 +40,34 @@ io.on("connection", (socket) => {
     //Send data to ALL clients, including this one
     //(io.on = server.send)
     io.emit('message-share', data);
+    });
 
+    // listen for when player joins
+    socket.on('player-join', (nickname) => {
+        console.log("Received 'player-join' with the following nickname: ")
+        console.log(nickname);
 
-  });
+        // store their initial x.y cords & nickname so that we can emit it
+        players[socket.id] = {
+            id: socket.id,
+            nickname: nickname,
+            x: 100,
+            y: 100
+        }
+        // emit client's nickname and location to everyone
+        io.emit('update-players', players)
+        console.log("Current player list: ")
+        console.log(players)
+
+    })
 
   //Listen for this client to disconnect
   socket.on("disconnect", () => {
     console.log("A client has disconnected: " + socket.id);
+
+    // remove player nickname/location from screen 
+    delete players[socket.id];
+    io.emit('update-players', players); // update everyone
   });
 });
 
