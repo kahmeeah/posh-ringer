@@ -53,6 +53,7 @@ io.on("connection", (socket) => {
       nickname: nickname,
       x: 100,
       y: 100,
+      spriteIndex: Math.floor(Math.random() * 4),//assign sprite
     };
     // emit client's nickname and location to everyone
     io.emit("update-players", players);
@@ -69,6 +70,18 @@ io.on("connection", (socket) => {
       //emit updated positions to everyone
       io.emit("update-players", players);
     }
+  });
+
+  //listen for when player throws a shoe
+  socket.on("throw-horseshoe", (data) => {
+    // emit throw to everyone
+    io.emit("player-threw", {
+      playerId: socket.id,
+      startX: data.startX,
+      startY: data.startY,
+      targetX: data.targetX,
+      targetY: data.targetY,
+    });
   });
 
   //Listen for this client to disconnect
