@@ -1,6 +1,6 @@
 import "./css/start.css";
 import titlesvg from "/assets/title.svg";
-import bg from "/assets/background.png";
+import bg from "/assets/start-screen.jpeg";
 
 export default function StartPage({ nickname, setNickname, onJoin }) {
   // js goes here
@@ -12,9 +12,9 @@ export default function StartPage({ nickname, setNickname, onJoin }) {
     <div className="start-wrapper">
       <div className="start-bg-layer" style={{ backgroundImage: `url(${bg})` }}></div>
       <section className="start-scene">
-        <div className="title-container">
+        {/* <div className="title-container">
           <img src={titlesvg} alt="Game Title" className="start-title-img" />
-        </div>
+        </div> */}
         {/* <div>START PAGE</div> */}
         <div>
           <form onSubmit={onJoin}>

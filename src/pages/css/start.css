@@ -15,7 +15,7 @@
   bottom: -15px;
   background-size: cover;
   background-position: center;
-  filter: blur(10px);
+  /* filter: blur(10px); */
   z-index: 0;
 }
 
