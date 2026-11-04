@@ -19,15 +19,17 @@ export default function GameCanvas({ socket, nickname }) {
 
   // js goes here
   let ringers = [
-    { id: 1, x: 40, y: 345, radius: 20 },
+    { id: 1, x: 60, y: 345, radius: 20 },
     { id: 2, x: 440, y: 400, radius: 20 },
-    { id: 3, x: 620, y: 145, radius: 20 },
-    { id: 4, x: 100, y: 2055, radius: 20 },
-    { id: 5, x: 500, y: 55, radius: 20 },
-    { id: 6, x: 1040, y: 135, radius: 20 },
-    { id: 7, x: 900, y: 235, radius: 20 },
+    { id: 3, x: 620, y: 500, radius: 20 },
+    { id: 4, x: 100, y: 255, radius: 20 },
+    { id: 5, x: 505, y: 85, radius: 20 },
+    { id: 6, x: 400, y: 255, radius: 20 },
+    { id: 7, x: 725, y: 235, radius: 20 },
     { id: 8, x: 300, y: 305, radius: 20 },
-    { id: 9, x: 990, y: 585, radius: 20 },
+    { id: 9, x: 710, y: 800, radius: 20 },
+    { id: 10, x: 450, y: 840, radius: 20 },
+    { id: 11, x: 270, y: 640, radius: 20 },
   ];
 
   let wheel = {
