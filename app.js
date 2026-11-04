@@ -68,11 +68,16 @@ io.on("connection", (socket) => {
       x: 500,
       y: 510,
       spriteIndex: Math.floor(Math.random() * 4),//assign sprite
+      score: 0,
     };
     // emit client's nickname and location to everyone
     io.emit("update-players", players);
     console.log("Current player list: ");
     console.log(players);
+
+        //send msg to everyone
+    io.emit("server-log", `${nickname} joined the game.`);
+    console.log("server-log", `${nickname} joined the game.`)
   });
 
   //listen for when player moves
@@ -98,13 +103,38 @@ io.on("connection", (socket) => {
     });
   });
 
+  //listen for when player makes a goal
+  socket.on("score-goal", () => {
+    players[socket.id].score += 1;
+    //announce to everyone
+    io.emit(
+      "server-log",
+      `${players[socket.id].nickname} scored a point! (Total: ${players[socket.id].score})`,
+    );
+    //update players / save score
+    io.emit("update-players", players);
+
+    // search thru all players and find one w highest score
+    io.emit(
+      "server-log",
+      `${players[socket.id].nickname} is leading with ${players[socket.id].score} points!`,
+    );
+  });
+
   //Listen for this client to disconnect
   socket.on("disconnect", () => {
     console.log("A client has disconnected: " + socket.id);
+    let playerName = players[socket.id]?.nickname;
+    if (playerName) {
+      io.emit("server-log", `${playerName} has left the game.`);
+    }
+
 
     // remove player nickname/location from screen
     delete players[socket.id];
     io.emit("update-players", players); // update everyone
+    //send msg to everyone
+   
   });
 });
 
