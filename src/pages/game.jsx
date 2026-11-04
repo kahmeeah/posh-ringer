@@ -19,15 +19,17 @@ export default function GameCanvas({ socket, nickname }) {
 
   // js goes here
   let ringers = [
-    { id: 1, x: 40, y: 345, radius: 40 },
-    { id: 2, x: 440, y: 400, radius: 40 },
-    { id: 3, x: 620, y: 145, radius: 40 },
-    { id: 4, x: 100, y: 2055, radius: 40 },
-    { id: 5, x: 500, y: 55, radius: 40 },
-    { id: 6, x: 1040, y: 135, radius: 40 },
-    { id: 7, x: 900, y: 235, radius: 40 },
-    { id: 8, x: 300, y: 305, radius: 40 },
-    { id: 9, x: 990, y: 585, radius: 40 },
+    { id: 1, x: 60, y: 345, radius: 20 },
+    { id: 2, x: 440, y: 400, radius: 20 },
+    { id: 3, x: 620, y: 500, radius: 20 },
+    { id: 4, x: 100, y: 255, radius: 20 },
+    { id: 5, x: 505, y: 85, radius: 20 },
+    { id: 6, x: 400, y: 255, radius: 20 },
+    { id: 7, x: 725, y: 235, radius: 20 },
+    { id: 8, x: 300, y: 305, radius: 20 },
+    { id: 9, x: 710, y: 800, radius: 20 },
+    { id: 10, x: 450, y: 840, radius: 20 },
+    { id: 11, x: 270, y: 640, radius: 20 },
   ];
 
   let wheel = {
@@ -87,6 +89,9 @@ export default function GameCanvas({ socket, nickname }) {
       let titleSvg;
       let selectedRinger;
 
+      let mapImg;
+      let camera = { x: 0, y: 0, zoom: 3.2 };
+
       let charImgs = [];
       let playerSpriteIndexRef = {};
       let prevPlayerXRef = {};
@@ -101,6 +106,7 @@ export default function GameCanvas({ socket, nickname }) {
 
         // async load the svg
         try {
+          mapImg = await p.loadImage("/assets/map.png");
           bgImg = await p.loadImage("/assets/background.png");
           titleSvg = await p.loadImage("/assets/title.svg");
           horseshoeSvg = await p.loadImage("/assets/horseshoe.svg");
@@ -129,7 +135,7 @@ export default function GameCanvas({ socket, nickname }) {
         if (wheelD < wheel.radius) {
           // if ringer isnt selected, cant click on wheel
           if (!selectedRinger) {
-            setPopupMessage("Select a ringer first!");
+            setPopupMessage("Select a stake first!");
             setTimeout(() => setPopupMessage(null), 3000);
             return;
           }
@@ -143,7 +149,7 @@ export default function GameCanvas({ socket, nickname }) {
             let timeLeft = Math.ceil(
               (cooldownsRef.current[selectedRinger.id] - now) / 1000,
             );
-            setPopupMessage(`Ringer on cooldown! Wait ${timeLeft}s.`);
+            setPopupMessage(`Stake on cooldown! Wait ${timeLeft}s.`);
             setTimeout(() => setPopupMessage(null), 3000);
             return;
           }
@@ -156,8 +162,12 @@ export default function GameCanvas({ socket, nickname }) {
         // check if clicked on any ringer target
         let hasClickedRinger = false;
 
+        //calc browser mouse cords 2 world/camera mouse cords
+        let worldMouseX = p.mouseX / camera.zoom + camera.x;
+        let worldMouseY = p.mouseY / camera.zoom + camera.y;
+
         ringers.forEach((ringer) => {
-          let ringerD = p.dist(p.mouseX, p.mouseY, ringer.x, ringer.y);
+          let ringerD = p.dist(worldMouseX, worldMouseY, ringer.x, ringer.y);
           if (ringerD < ringer.radius) {
             // check ringer cooldown b4 allowing selection
             let now = Date.now();
@@ -168,13 +178,18 @@ export default function GameCanvas({ socket, nickname }) {
               let timeLeft = Math.ceil(
                 (cooldownsRef.current[ringer.id] - now) / 1000,
               );
-              setPopupMessage(`Ringer on cooldown! Wait ${timeLeft}s.`);
+              setPopupMessage(`Stake on cooldown! Wait ${timeLeft}s.`);
               setTimeout(() => setPopupMessage(null), 3000);
               return;
             }
 
             selectedRinger = ringer;
             hasClickedRinger = true;
+
+            let colors = ["0,203,206", "192,1,25", "178,127,26", "194,54,155"];
+            let randomColorStr =
+              colors[Math.floor(Math.random() * colors.length)];
+            selectedRinger.selectedColor = randomColorStr;
           }
         });
 
@@ -186,7 +201,7 @@ export default function GameCanvas({ socket, nickname }) {
 
       p.handleMovement = () => {
         // handle it locally first
-        let speed = 4;
+        let speed = 2;
         let moved = false;
         let moveData = { x: 0, y: 0 };
 
@@ -310,7 +325,7 @@ export default function GameCanvas({ socket, nickname }) {
 
         // max distance corresponds 2 100 pwoer
         //power determines whether it falls short, far, or it hits it
-        let maxDist = 800;
+        let maxDist = 400;
         let actualDist = (wheel.power / 100) * maxDist;
 
         let targetX = startX + Math.cos(angleToRinger) * actualDist;
@@ -397,43 +412,63 @@ export default function GameCanvas({ socket, nickname }) {
       //   }
       // };
 
+      p.mouseWheel = (event) => {
+        let zoomFactor = 0.01;
+        let sensativity = 0.001;
+        let zMin = 1.5;
+        let zMax = 4.0;
+        camera.zoom += sensativity * event.delta;
+        camera.zoom = p.constrain(camera.zoom, zMin, zMax);
+        return false;
+      };
+
       p.draw = () => {
         p.background(20);
-        if (bgImg) {
-          p.imageMode(p.CORNER);
-          p.image(bgImg, 0, 0, p.width, p.height);
-        }
+        // if (bgImg) {
+        //   p.imageMode(p.CORNER);
+        //   p.image(bgImg, 0, 0, p.width, p.height);
+        // }
 
-        if (titleSvg) {
-          let titleWidth = 100;
-          let titleHeight = 100;
-          let margin = 20;
-
-          p.imageMode(p.CORNER);
-          p.image(
-            titleSvg,
-            p.width - titleWidth - margin,
-            margin - 20,
-            titleWidth,
-            titleHeight,
+        let myPlayer = playersRef.current[socket.id];
+        if (myPlayer) {
+          // center cam on the player offset by canvas w/h
+          // lerp so its not janky
+          camera.x = p.lerp(
+            camera.x,
+            myPlayer.x - p.width / (2 * camera.zoom),
+            0.1,
+          );
+          camera.y = p.lerp(
+            camera.y,
+            myPlayer.y - p.height / (2 * camera.zoom),
+            0.1,
           );
         }
+
+        p.push();
+        p.scale(camera.zoom); // zoom into map
+        p.translate(-camera.x, -camera.y); // fllw cam coords
+
+        //place map
+        p.image(mapImg, 0, 0, 1024, 1024);
 
         // place ringers onto screen
         ringers.forEach((ringer) => {
           if (ringerSvg) {
             p.imageMode(p.CENTER);
-            p.image(ringerSvg, ringer.x, ringer.y, 80, 80);
+            p.image(ringerSvg, ringer.x, ringer.y, 40, 40);
           }
 
           // if selected, draw circle around ringer
           if (selectedRinger && selectedRinger.id === ringer.id) {
+            let colorStr = selectedRinger.selectedColor || "0,203,206"; //fallback color
+            let rgb = colorStr.split(",").map(Number);
             p.push();
             p.noFill();
-            p.stroke(255, 0, 0, 150);
-            p.strokeWeight(3);
+            p.stroke(rgb[0], rgb[1], rgb[2]);
+            p.strokeWeight(2);
             // draw circle centered around ringer cords
-            p.ellipse(ringer.x, ringer.y, 110, 110);
+            p.ellipse(ringer.x, ringer.y, 50, 50);
             p.pop();
           }
 
@@ -449,8 +484,6 @@ export default function GameCanvas({ socket, nickname }) {
 
         // call handle player movement func
         p.handleMovement();
-
-        
 
         // update & draw horseshoe trajectory if its active
         // loop thru and update all active throws in flight
@@ -476,15 +509,15 @@ export default function GameCanvas({ socket, nickname }) {
                 );
                 // if the distance ^^^ is within the radius then mark it as a hit
                 if (distance < selectedRinger.radius) {
-                  console.log("ringer was hit");
+                  console.log("stake was hit");
                   // if hit is successful, unselect ringer then
                   let hitRingerId = selectedRinger.id;
                   selectedRinger = null;
                   cooldownsRef.current[hitRingerId] = Date.now() + 10000; //apply 10sec cooldown 4 this ringer for this client
-                  setPopupMessage(`Ringer was Hit! 10s Cooldown started.`);
+                  setPopupMessage(`Stake was Hit! 10s Cooldown started.`);
                   setTimeout(() => setPopupMessage(null), 4000);
                 } else {
-                  console.log("ringer was missed ");
+                  console.log("stake was missed ");
                 }
               }
             }
@@ -509,7 +542,7 @@ export default function GameCanvas({ socket, nickname }) {
 
           // only draw if the svg has loaded
           if (horseshoeSvg) {
-            p.image(horseshoeSvg, t.currentX, renderY, 24, 24); // draw to new pos
+            p.image(horseshoeSvg, t.currentX, renderY, 12, 12); // draw to new pos
           }
         });
 
@@ -540,12 +573,12 @@ export default function GameCanvas({ socket, nickname }) {
             p.scale(-1, 1);
           }
 
-          //assigned via the server so its the same across all clients 
+          //assigned via the server so its the same across all clients
           let spriteIdx = player.spriteIndex ?? 0;
           let assignedImg = charImgs[spriteIdx];
           if (assignedImg) {
             p.imageMode(p.CENTER);
-            p.image(assignedImg, 0, 0, 240, 240);
+            p.image(assignedImg, 0, 0, 80, 80);
           } else {
             // fallback 2 square if image isnt loaded
             p.fill(255);
@@ -556,14 +589,30 @@ export default function GameCanvas({ socket, nickname }) {
 
           // draw nicknames over the square
           p.fill(255);
-          p.textSize(20);
+          p.textSize(8);
           // p.textAlign(p.CENTER, p.TOP);
-          p.text(player.nickname, player.x, player.y - 110);
+          p.text(player.nickname, player.x + 7, player.y - 25);
         });
+
+        p.pop();
+        //-----------------ui elements draw after here-----------------
+        if (titleSvg) {
+          let titleWidth = 100;
+          let titleHeight = 100;
+          let margin = 20;
+
+          p.imageMode(p.CORNER);
+          p.image(
+            titleSvg,
+            p.width - titleWidth - margin,
+            margin - 20,
+            titleWidth,
+            titleHeight,
+          );
+        }
 
         // call handle wheel func
         p.handleWheel();
-
       };
     };
 
