@@ -5,10 +5,10 @@ import p5 from "p5";
 export default function GameCanvas({ socket, nickname }) {
   // js goes here
   let ringers = [
-    { id: 1, x: 40, y: 345, radius: 25 },
-    { id: 2, x: 440, y: 400, radius: 25 },
-    { id: 3, x: 620, y: 145, radius: 25 },
-    { id: 4, x: 100, y: 35, radius: 25 },
+    { id: 1, x: 40, y: 345, radius: 40 },
+    { id: 2, x: 440, y: 400, radius: 40 },
+    { id: 3, x: 620, y: 145, radius: 40 },
+    { id: 4, x: 100, y: 35, radius: 40 },
   ];
 
   const p5ContainerRef = useRef(null);
@@ -31,6 +31,7 @@ export default function GameCanvas({ socket, nickname }) {
     // create p5 sketch w setup/draw functions as normal
     const sketch = (p) => {
       let horseshoeSvg;
+      let ringerSvg;
       let selectedRinger;
 
       //horseshoe obj to track starting pos, target pos, and current pos
@@ -53,8 +54,9 @@ export default function GameCanvas({ socket, nickname }) {
         // async load the svg
         try {
           horseshoeSvg = await p.loadImage("/assets/horseshoe.svg");
+          ringerSvg = await p.loadImage("/assets/pink-ringer.png");
         } catch (err) {
-          console.error("failed to load horseshoe svg:", err);
+          console.error("failed to load an image or asset:", err);
         }
       };
 
@@ -161,22 +163,28 @@ export default function GameCanvas({ socket, nickname }) {
 
         // place ringers onto screen
         ringers.forEach((ringer) => {
+          if (ringerSvg) {
+            p.imageMode(p.CENTER);
+            p.image(ringerSvg, ringer.x, ringer.y, 80, 80);
+          }
+
           // if selected, draw circle around ringer
           if (selectedRinger && selectedRinger.id === ringer.id) {
             p.noFill();
-            p.stroke(255, 200, 50, 150);
+            p.stroke(255, 0, 0, 150);
             p.strokeWeight(3);
-            p.ellipse(ringer.x + 10, ringer.y + 10, 80, 80);
+            // draw circle centered around ringer cords
+            p.ellipse(ringer.x, ringer.y, 110, 110);
           }
 
-          // the sand
-          p.fill(80, 60, 40); // dirt/sand pit color
-          p.noStroke();
-          p.rect(ringer.x - 19, ringer.y + 15, 50, 35);
+          // // the sand
+          // p.fill(80, 60, 40); // dirt/sand pit color
+          // p.noStroke();
+          // p.rect(ringer.x - 19, ringer.y + 15, 50, 35);
 
-          // the pole
-          p.fill(255, 0, 0);
-          p.rect(ringer.x, ringer.y, 10, 40, 20);
+          // // the pole
+          // p.fill(255, 0, 0);
+          // p.rect(ringer.x, ringer.y, 10, 40, 20);
         });
 
         // call handle player movement func
