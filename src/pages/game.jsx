@@ -3,6 +3,9 @@ import { useEffect, useState, useRef } from "react";
 import p5 from "p5";
 
 export default function GameCanvas({ socket, nickname }) {
+  const [popupMessage, setPopupMessage] = useState(null);
+  const cooldownsRef = useRef({});
+
   // js goes here
   let ringers = [
     { id: 1, x: 40, y: 345, radius: 40 },
@@ -10,6 +13,16 @@ export default function GameCanvas({ socket, nickname }) {
     { id: 3, x: 620, y: 145, radius: 40 },
     { id: 4, x: 100, y: 35, radius: 40 },
   ];
+
+  let wheel = {
+    x: 0, 
+    y: 0, 
+    radius: 80, 
+    angle: 0,
+    lastAngle: 0,
+    power: 0,
+    isDragging: false,
+  };
 
   const p5ContainerRef = useRef(null);
   const playersRef = useRef({});
@@ -36,6 +49,7 @@ export default function GameCanvas({ socket, nickname }) {
         currentY: data.startY,
         progress: 0,
         heightOffset: 0,
+        throwHeight: data.throwHeight,
         playerId: data.playerId,
       });
     });
@@ -52,30 +66,85 @@ export default function GameCanvas({ socket, nickname }) {
     const sketch = (p) => {
       let horseshoeSvg;
       let ringerSvg;
+      let wheelSvg;
+      let bgImg;
       let selectedRinger;
 
       // async setup w await for assets
       p.setup = async () => {
-        p.createCanvas(800, 600);
+        p.createCanvas(p.windowWidth, p.windowHeight);
+
+        // center wheel at the bottom of the screen
+        wheel.x = p.width / 2;
+        wheel.y = p.height - 120;
 
         // async load the svg
         try {
+          bgImg = await p.loadImage("/assets/background.png");
           horseshoeSvg = await p.loadImage("/assets/horseshoe.svg");
           ringerSvg = await p.loadImage("/assets/pink-ringer.png");
+          wheelSvg = await p.loadImage("/assets/wheel.png");
         } catch (err) {
           console.error("failed to load an image or asset:", err);
         }
       };
 
+      p.windowResized = () => {
+        p.resizeCanvas(p.windowWidth, p.windowHeight);
+        // keep wheel centered on resize
+        wheel.x = p.width / 2;
+        wheel.y = p.height - 120;
+      };
+
       // on click -> select ringer target
       p.mousePressed = () => {
+        let wheelD = p.dist(p.mouseX, p.mouseY, wheel.x, wheel.y);
+        if (wheelD < wheel.radius) {
+          // if ringer isnt selected, cant click on wheel
+          if (!selectedRinger) {
+            setPopupMessage("Select a ringer first!");
+            setTimeout(() => setPopupMessage(null), 3000);
+            return;
+          }
+
+          // check if the selected ringer is curr on cooldown for this client
+          let now = Date.now();
+          if (cooldownsRef.current[selectedRinger.id] && cooldownsRef.current[selectedRinger.id] > now) {
+            let timeLeft = Math.ceil((cooldownsRef.current[selectedRinger.id] - now) / 1000);
+            setPopupMessage(`Ringer on cooldown! Wait ${timeLeft}s.`);
+            setTimeout(() => setPopupMessage(null), 3000);
+            return;
+          }
+
+          wheel.isDragging = true;
+          wheel.lastAngle = Math.atan2(p.mouseY - wheel.y, p.mouseX - wheel.x);
+          return;
+        }
+
+        // check if clicked on any ringer target
+        let hasClickedRinger = false;
+
         ringers.forEach((ringer) => {
-          let d = p.dist(p.mouseX, p.mouseY, ringer.x, ringer.y);
-          if (d < ringer.radius) {
+          let ringerD = p.dist(p.mouseX, p.mouseY, ringer.x, ringer.y);
+          if (ringerD < ringer.radius) {
+            // check ringer cooldown b4 allowing selection
+            let now = Date.now();
+            if (cooldownsRef.current[ringer.id] && cooldownsRef.current[ringer.id] > now) {
+              let timeLeft = Math.ceil((cooldownsRef.current[ringer.id] - now) / 1000);
+              setPopupMessage(`Ringer on cooldown! Wait ${timeLeft}s.`);
+              setTimeout(() => setPopupMessage(null), 3000);
+              return;
+            }
+
             selectedRinger = ringer;
-            console.log(`Target locked: ${ringer.name}`);
+            hasClickedRinger = true;
           }
         });
+
+        // if mouse is clicked on neither the wheel or a ringer then unselect target
+        if (!hasClickedRinger) {
+          selectedRinger = null;
+        }
       };
 
       p.handleMovement = () => {
@@ -137,32 +206,137 @@ export default function GameCanvas({ socket, nickname }) {
         }
       };
 
-      // for now, trigger throw da spacebar
-      p.keyPressed = (e) => {
-        // if spacebar is pressed
-        if (p.key === " " || p.keyCode === 32) {
-          // stop browser from scrolling on spacebar press
-          if (e) e.preventDefault();
+      p.mouseDragged = () => {
+        //ignore if the mouse is not being dragged on the wheel
+        if (!wheel.isDragging) return;
 
-          // if a ring is selected
-          // then let the current player throw a shoe
-          if (selectedRinger) {
-            let currentPlayer = playersRef.current[socket.id];
-            if (!currentPlayer) return;
+        let currentAngle = Math.atan2(p.mouseY - wheel.y, p.mouseX - wheel.x);
+        let angleDelta = currentAngle - wheel.lastAngle;
 
-            // emit/send throw to server to broadcast
-            socket.emit("throw-horseshoe", {
-              startX: currentPlayer.x + 20,
-              startY: currentPlayer.y + 20,
-              targetX: selectedRinger.x,
-              targetY: selectedRinger.y,
-            });
-          }
+        // let wheel wrap 360 degrees smoothly
+        if (angleDelta > p.PI) angleDelta -= p.TWO_PI;
+        if (angleDelta < -p.PI) angleDelta += p.TWO_PI;
+
+        wheel.angle = currentAngle;
+        wheel.lastAngle = currentAngle;
+
+        // power up clockwise, down counterclockise
+        if (angleDelta > 0) {
+          // pushback near max power
+          let pushback = Math.max(0.08, 1 - Math.pow(wheel.power / p.PI, 2));
+          wheel.power = p.constrain(wheel.power + angleDelta * 35 * pushback, 0, 100);
+        } else {
+          // pushback near 0 power
+          let pushback = Math.max(0.08, 1 - Math.pow((100 - wheel.power) / p.PI, 2));
+          wheel.power = p.constrain(wheel.power + angleDelta * 35 * pushback, 0, 100);
         }
       };
 
+      // mouse release shoots the horseshoe!
+      p.mouseReleased = () => {
+        //ignore if the mouse is not being dragged on the wheel
+        if (!wheel.isDragging) return;
+        wheel.isDragging = false; //reset var
+
+        // then let the current player throw a shoe
+        let currentPlayer = playersRef.current[socket.id];
+        if (!currentPlayer) return; //ignore if no currentplayer
+
+        // ensure selectedRinger exists b4 calculating throw
+        if (!selectedRinger) return;
+
+        let startX = currentPlayer.x + 20;
+        let startY = currentPlayer.y + 20;
+
+        // always throw in the direction/angle of the selected ringer
+        let angleToRinger = p.atan2(selectedRinger.y - startY, selectedRinger.x - startX);
+        let requiredDist = p.dist(startX, startY, selectedRinger.x, selectedRinger.y);
+
+        // max distance corresponds 2 100 pwoer
+        //power determines whether it falls short, far, or it hits it
+        let maxDist = 800;
+        let actualDist = (wheel.power / 100) * maxDist;
+
+        let targetX = startX + Math.cos(angleToRinger) * actualDist;
+        let targetY = startY + Math.sin(angleToRinger) * actualDist;
+
+        let baseHeight = -70;
+        let finalThrowHeight = baseHeight * (1 + (wheel.power / 50)); //multiply throw speed and height by power soley for visual affects
+
+        // emit/send throw to server to broadcast
+        socket.emit("throw-horseshoe", {
+          startX: startX,
+          startY: startY,
+          targetX: targetX,
+          targetY: targetY,
+          throwHeight: finalThrowHeight,
+        });
+
+        // rset wheel power
+        wheel.power = 0;
+      };
+
+      p.handleWheel = () => {
+        p.push();
+        p.translate(wheel.x, wheel.y);
+        
+        // draw wheeeeeeel
+        p.rotate(wheel.angle);
+        if (wheelSvg) {
+          p.imageMode(p.CENTER);
+          p.image(wheelSvg, 0, 0, 160, 160); //
+        } else {
+          p.fill(100);
+          p.ellipse(0, 0, 160, 160);
+        }
+        p.pop();
+
+        // power meter
+        let meterWidth = 300; // 
+        let meterHeight = 24; // 
+        let fillWidth = p.map(wheel.power, 0, 100, 0, meterWidth);
+        
+        p.fill(0, 150);
+        p.noStroke();
+        p.rect(wheel.x - meterWidth / 2, wheel.y + 90, meterWidth, meterHeight, 6); 
+        
+        p.fill(255, 180, 50);
+        p.rect(wheel.x - meterWidth / 2, wheel.y + 90, fillWidth, meterHeight, 6); 
+
+      }
+
+
+      // old code2 trigger throwing via spacebar (perfect hits everytime)
+      // // for now, trigger throw da spacebar
+      // p.keyPressed = (e) => {
+      //   // if spacebar is pressed
+      //   if (p.key === " " || p.keyCode === 32) {
+      //     // stop browser from scrolling on spacebar press
+      //     if (e) e.preventDefault();
+
+      //     // if a ring is selected
+      //     // then let the current player throw a shoe
+      //     if (selectedRinger) {
+      //       let currentPlayer = playersRef.current[socket.id];
+      //       if (!currentPlayer) return;
+
+      //       // emit/send throw to server to broadcast
+      //       socket.emit("throw-horseshoe", {
+      //         startX: currentPlayer.x + 20,
+      //         startY: currentPlayer.y + 20,
+      //         targetX: selectedRinger.x,
+      //         targetY: selectedRinger.y,
+      //       });
+      //     }
+      //   }
+      // };
+
       p.draw = () => {
         p.background(20);
+        if (bgImg) {
+          p.imageMode(p.CORNER);
+          p.image(bgImg, 0, 0, p.width, p.height);
+        }
 
         // place ringers onto screen
         ringers.forEach((ringer) => {
@@ -193,6 +367,9 @@ export default function GameCanvas({ socket, nickname }) {
         // call handle player movement func
         p.handleMovement();
 
+        // call handle wheel func
+        p.handleWheel();
+
         // update & draw horseshoe trajectory if its active
         // loop thru and update all active throws in flight
         activeThrowsRef.current.forEach((t, index) => {
@@ -202,43 +379,47 @@ export default function GameCanvas({ socket, nickname }) {
           if (t.progress >= 1.0) {
             t.progress = 1.0; //stop the progress from going over 1 for maths
 
-            // check hit/miss locally if it's our own throw
-            if (t.playerId === socket.id && selectedRinger) {
-              //measure distance btwn where horseshoe landed and the targets radius/hitbox
-              let distance = p.dist(
-                t.currentX,
-                t.currentY,
-                selectedRinger.x,
-                selectedRinger.y,
-              );
-              // if the distance ^^^ is within the radius then mark it as a hit
-              if (distance < selectedRinger.radius) {
-                console.log("ringer was hit");
-              } else {
-                console.log("ringer was missed ");
+            // shoe linger for 2 seconds b4 fading
+            if (!t.landedTime) {
+              t.landedTime = Date.now();
+
+              // check hit/miss locally if it's our own throw
+              if (t.playerId === socket.id && selectedRinger) {
+                //measure distance btwn where horseshoe landed and the targets radius/hitbox
+                let distance = p.dist(
+                  t.currentX,
+                  t.currentY,
+                  selectedRinger.x,
+                  selectedRinger.y,
+                );
+                // if the distance ^^^ is within the radius then mark it as a hit
+                if (distance < selectedRinger.radius) {
+                  console.log("ringer was hit");
+                  // if hit is successful, unselect ringer then
+                  let hitRingerId = selectedRinger.id;
+                  selectedRinger = null;
+                  cooldownsRef.current[hitRingerId] = Date.now() + 10000; //apply 10sec cooldown 4 this ringer for this client
+                  setPopupMessage(`Ringer was Hit! 10s Cooldown started.`);
+                  setTimeout(() => setPopupMessage(null), 4000);
+                } else {
+                  console.log("ringer was missed ");
+                }
               }
             }
 
-            // remove this.throw from the array once it lands
-            activeThrowsRef.current.splice(index, 1);
+            // keep shoe at landing spot 4 2 secs b4 removing so it can fade
+            if (Date.now() - t.landedTime > 2000) {
+              activeThrowsRef.current.splice(index, 1);
+            }
           } else {
             // if shoe progess is less than / still moving
             // use lerp to increment x and y pos from starting pos towards target pos
-            t.currentX = p.lerp(
-              t.startX,
-              t.targetX,
-              t.progress,
-            );
-            t.currentY = p.lerp(
-              t.startY,
-              t.targetY,
-              t.progress,
-            );
+            t.currentX = p.lerp(t.startX, t.targetX, t.progress);
+            t.currentY = p.lerp(t.startY, t.targetY, t.progress);
             //projectile throw the shoe
             // throw along a sin curve to look projectileresque
-            let throwHeight = -90; // probably have wheelstrength affect this later
-            t.heightOffset =
-              throwHeight * p.sin(t.progress * p.PI);
+            let throwHeight = t.throwHeight || -90; // defaults to -90
+            t.heightOffset = throwHeight * p.sin(t.progress * p.PI);
           }
 
           let renderY = t.currentY + t.heightOffset; // apply throw curve to the y pos
@@ -276,8 +457,13 @@ export default function GameCanvas({ socket, nickname }) {
   }, [socket]);
 
   return (
-    <section className="game-scene">
-      <div>GAME PAGE</div>
+    <section className="game-scene" style={{ position: "relative" }}>
+      {popupMessage && (
+        <div className="popup">
+          {popupMessage}
+        </div>
+      )}
+      {/* <div>GAME PAGE</div> */}
       <div ref={p5ContainerRef} />
     </section>
   );
