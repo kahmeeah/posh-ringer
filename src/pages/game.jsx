@@ -2,6 +2,17 @@ import "./css/game.css";
 import { useEffect, useState, useRef } from "react";
 import p5 from "p5";
 
+// TODO:
+// hitbox is lowk buns rn
+// scoring + leaderboard
+// depending on where u hit in/near the hitbox determines how many points u gain
+// personal score modal
+// hit/miss popups
+// game title
+// sprites
+// chatbox
+// more rules : ex. user must stand x pixels away from a ringer to shoot
+
 export default function GameCanvas({ socket, nickname }) {
   const [popupMessage, setPopupMessage] = useState(null);
   const cooldownsRef = useRef({});
@@ -70,6 +81,10 @@ export default function GameCanvas({ socket, nickname }) {
       let bgImg;
       let selectedRinger;
 
+      let charImgs = [];
+        let playerSpriteIndexRef = {};
+        let prevPlayerXRef = {}; 
+
       // async setup w await for assets
       p.setup = async () => {
         p.createCanvas(p.windowWidth, p.windowHeight);
@@ -78,12 +93,19 @@ export default function GameCanvas({ socket, nickname }) {
         wheel.x = p.width / 2;
         wheel.y = p.height - 120;
 
+
         // async load the svg
         try {
           bgImg = await p.loadImage("/assets/background.png");
           horseshoeSvg = await p.loadImage("/assets/horseshoe.svg");
           ringerSvg = await p.loadImage("/assets/pink-ringer.png");
           wheelSvg = await p.loadImage("/assets/wheel.png");
+
+          charImgs[0] = await p.loadImage("/assets/sprite1.png");
+          charImgs[1] = await p.loadImage("/assets/sprite2.png");
+          charImgs[2] = await p.loadImage("/assets/sprite3.png");
+          charImgs[3] = await p.loadImage("/assets/sprite4.png");
+
         } catch (err) {
           console.error("failed to load an image or asset:", err);
         }
@@ -433,16 +455,54 @@ export default function GameCanvas({ socket, nickname }) {
 
         // loop thru players & draw them
         const currentPlayers = playersRef.current;
-        Object.values(currentPlayers).forEach((player) => {
-          // draw squares for now -> replace these w sprites later on
-          p.fill(255);
-          p.noStroke();
-          p.rect(player.x, player.y, 40, 40);
+        Object.entries(currentPlayers).forEach(([id, player]) => {
+          // // draw squares for now -> replace these w sprites later on
+          // p.fill(255);
+          // p.noStroke();
+          // p.rect(player.x, player.y, 40, 40);
+
+          // assign a random sprite index once per player so it dont reshuffle every frame
+          if (playerSpriteIndexRef[id] === undefined) {
+            playerSpriteIndexRef[id] = Math.floor(Math.random() * charImgs.length);
+          }
+
+          // deyermine facing direction by comparing curr X to prev X pos
+          let prevX = prevPlayerXRef[id] ?? player.x;
+          if (player.x > prevX) {
+            playerSpriteIndexRef[id + "_facing"] = "right";
+          } else if (player.x < prevX) {
+            playerSpriteIndexRef[id + "_facing"] = "left";
+          }
+          prevPlayerXRef[id] = player.x;
+
+          let facingRight = playerSpriteIndexRef[id + "_facing"] === "right";
+
+          p.push();
+          // translate to center of player sprite for seamelss horiz flip
+          p.translate(player.x + 20, player.y + 20);
+
+          // flips them to face right (default is left)
+          if (facingRight) {
+            p.scale(-1, 1);
+          }
+
+          let assignedImg = charImgs[playerSpriteIndexRef[id]];
+          if (assignedImg) {
+            p.imageMode(p.CENTER);
+            p.image(assignedImg, 0, 0, 240, 240);
+          } else {
+            // fallback 2 square if image isnt loaded
+            p.fill(255);
+            p.noStroke();
+            p.rect(-20, -20, 40, 40);
+          }
+          p.pop();
 
           // draw nicknames over the square
           p.fill(255);
-          p.textSize(14);
-          p.text(player.nickname, player.x, player.y - 8);
+          p.textSize(20);
+          // p.textAlign(p.CENTER, p.TOP);
+          p.text(player.nickname, player.x, player.y-110);
         });
       };
     };
