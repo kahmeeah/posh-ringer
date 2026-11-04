@@ -45,14 +45,14 @@ io.on("connection", (socket) => {
   // listen for when player joins
   socket.on("player-join", (nickname) => {
     console.log("Received 'player-join' with the following nickname: ");
-    console.log(nickname);
+    console.log(nickname); 
 
     // store their initial x.y cords & nickname so that we can emit it
     players[socket.id] = {
       id: socket.id,
       nickname: nickname,
-      x: 100,
-      y: 100,
+      x: 500,
+      y: 510,
       spriteIndex: Math.floor(Math.random() * 4),//assign sprite
     };
     // emit client's nickname and location to everyone
