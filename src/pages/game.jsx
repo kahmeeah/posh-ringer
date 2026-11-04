@@ -40,8 +40,8 @@ export default function GameCanvas({ socket, nickname }) {
           p.keyIsDown(p.LEFT_ARROW) ||
           p.keyIsDown("A") ||
           p.keyIsDown("a") ||
-          keyIsDown(65) ||
-          keyIsDown(97)
+          p.keyIsDown(65) ||
+          p.keyIsDown(97)
         ) {
           // left / A / a
           moveData.x -= speed;
@@ -51,8 +51,8 @@ export default function GameCanvas({ socket, nickname }) {
           p.keyIsDown(p.RIGHT_ARROW) ||
           p.keyIsDown("D") ||
           p.keyIsDown("d") ||
-          keyIsDown(68) ||
-          keyIsDown(100)
+          p.keyIsDown(68) ||
+          p.keyIsDown(100)
         ) {
           // right / D / d
           moveData.x += speed;
@@ -62,8 +62,8 @@ export default function GameCanvas({ socket, nickname }) {
           p.keyIsDown(p.UP_ARROW) ||
           p.keyIsDown("W") ||
           p.keyIsDown("w") ||
-          keyIsDown(87) ||
-          keyIsDown(119)
+          p.keyIsDown(87) ||
+          p.keyIsDown(119)
         ) {
           // up / W / w
           moveData.y -= speed;
@@ -73,8 +73,8 @@ export default function GameCanvas({ socket, nickname }) {
           p.keyIsDown(p.DOWN_ARROW) ||
           p.keyIsDown("S") ||
           p.keyIsDown("s") ||
-          keyIsDown(83) ||
-          keyIsDown(115)
+          p.keyIsDown(83) ||
+          p.keyIsDown(115)
         ) {
           // down / S / s
           moveData.y += speed;
