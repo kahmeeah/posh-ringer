@@ -101,6 +101,12 @@ export default function GameCanvas({ socket, nickname }) {
         // place ringers onto screen
         ringers.forEach(ringer => {
 
+        // the sand 
+        p.fill(80, 60, 40); // dirt/sand pit color
+        p.noStroke();
+        p.rect(ringer.x-19, ringer.y+15, 50, 35);
+
+        // the pole
         p.fill(255, 0, 0);
         p.rect(ringer.x, ringer.y, 10, 40, 20);
 
