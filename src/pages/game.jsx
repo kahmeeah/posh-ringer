@@ -4,6 +4,12 @@ import p5 from "p5";
 
 export default function GameCanvas({ socket, nickname }) {
   // js goes here
+  let ringers = [
+    { id: 1, x: 40, y: 345 },
+    { id: 2, x: 440, y: 400 },
+    { id: 3, x: 620, y: 145 },
+    { id: 4, x: 100, y: 35 },
+  ]
 
   const p5ContainerRef = useRef(null);
   const playersRef = useRef({});
@@ -87,8 +93,18 @@ export default function GameCanvas({ socket, nickname }) {
         }
       };
 
+      
+
       p.draw = () => {
         p.background(20);
+
+        // place ringers onto screen
+        ringers.forEach(ringer => {
+
+        p.fill(255, 0, 0);
+        p.rect(ringer.x, ringer.y, 10, 40, 20);
+
+        })
 
         // call handle player movement func
         p.handleMovement();
