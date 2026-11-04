@@ -129,7 +129,7 @@ export default function GameCanvas({ socket, nickname }) {
         if (wheelD < wheel.radius) {
           // if ringer isnt selected, cant click on wheel
           if (!selectedRinger) {
-            setPopupMessage("Select a ringer first!");
+            setPopupMessage("Select a stake first!");
             setTimeout(() => setPopupMessage(null), 3000);
             return;
           }
@@ -143,7 +143,7 @@ export default function GameCanvas({ socket, nickname }) {
             let timeLeft = Math.ceil(
               (cooldownsRef.current[selectedRinger.id] - now) / 1000,
             );
-            setPopupMessage(`Ringer on cooldown! Wait ${timeLeft}s.`);
+            setPopupMessage(`Stake on cooldown! Wait ${timeLeft}s.`);
             setTimeout(() => setPopupMessage(null), 3000);
             return;
           }
@@ -168,7 +168,7 @@ export default function GameCanvas({ socket, nickname }) {
               let timeLeft = Math.ceil(
                 (cooldownsRef.current[ringer.id] - now) / 1000,
               );
-              setPopupMessage(`Ringer on cooldown! Wait ${timeLeft}s.`);
+              setPopupMessage(`Stake on cooldown! Wait ${timeLeft}s.`);
               setTimeout(() => setPopupMessage(null), 3000);
               return;
             }
@@ -481,10 +481,10 @@ export default function GameCanvas({ socket, nickname }) {
                   let hitRingerId = selectedRinger.id;
                   selectedRinger = null;
                   cooldownsRef.current[hitRingerId] = Date.now() + 10000; //apply 10sec cooldown 4 this ringer for this client
-                  setPopupMessage(`Ringer was Hit! 10s Cooldown started.`);
+                  setPopupMessage(`Stake was Hit! 10s Cooldown started.`);
                   setTimeout(() => setPopupMessage(null), 4000);
                 } else {
-                  console.log("ringer was missed ");
+                  console.log("stake was missed ");
                 }
               }
             }
