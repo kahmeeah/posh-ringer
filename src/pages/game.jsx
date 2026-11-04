@@ -17,6 +17,10 @@ export default function GameCanvas({ socket, nickname }) {
   const [popupMessage, setPopupMessage] = useState(null);
   const cooldownsRef = useRef({});
 
+  const [serverLogs, setServerLogs] = useState([]);
+  const [personalScore, setPersonalScore] = useState(0);
+
+
   // js goes here
   let ringers = [
     { id: 1, x: 60, y: 345, radius: 20 },
@@ -52,6 +56,10 @@ export default function GameCanvas({ socket, nickname }) {
       // client updates to match info from server
       // ^ in this case: broadcasts all player locations+nicknames
       playersRef.current = serverPlayers;
+      if (serverPlayers[socket.id]) {
+        //if exists
+        setPersonalScore(serverPlayers[socket.id].score || 0); //updates personal score from backend counter // defaults 2 zero
+      }
     });
 
     // when 'player-threw' is received from server
@@ -72,10 +80,20 @@ export default function GameCanvas({ socket, nickname }) {
       });
     });
 
+    // when 'server-log' is received from server
+    socket.on("server-log", (message) => {
+      // clients updates to match info from server
+      // ^ in this case: broadcasts all server logs
+      setServerLogs((prevLogs) => [...prevLogs, message]);
+      //take all prevLogs and copy them onto new list
+      // & append the newest msg just receieved
+    });
+
     //on unmount/cleanup -> stop listening to the sockets
     return () => {
       socket.off("update-players");
       socket.off("player-threw");
+      socket.off("server-log");
     };
   }, [socket]);
 
@@ -511,6 +529,7 @@ export default function GameCanvas({ socket, nickname }) {
                 if (distance < selectedRinger.radius) {
                   console.log("stake was hit");
                   // if hit is successful, unselect ringer then
+                  socket.emit("score-goal");
                   let hitRingerId = selectedRinger.id;
                   selectedRinger = null;
                   cooldownsRef.current[hitRingerId] = Date.now() + 10000; //apply 10sec cooldown 4 this ringer for this client
@@ -627,9 +646,34 @@ export default function GameCanvas({ socket, nickname }) {
 
   return (
     <section className="game-scene" style={{ position: "relative" }}>
+
       {popupMessage && <div className="popup">{popupMessage}</div>}
+
+      <div className="log-container">
+        {/* server log feed */}
+        <div className="log-panel">
+          <div className="log-scroll-area"
+          onWheel={(e) => e.stopPropagation()} >
+            {serverLogs.length === 0 ? (
+              <div className="log-line muted">Waiting for activity...</div>
+            ) : (
+              serverLogs.map((log, index) => (
+                <div key={index} className="log-line">› {log}</div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+        <div className="score-panel">
+          <h4>SCORE</h4>
+          <span className="score-number">{personalScore}</span>
+        </div>
+
+          
       {/* <div>GAME PAGE</div> */}
       <div ref={p5ContainerRef} />
+
     </section>
   );
 }
