@@ -22,7 +22,12 @@ export default function GameCanvas({ socket, nickname }) {
     { id: 1, x: 40, y: 345, radius: 40 },
     { id: 2, x: 440, y: 400, radius: 40 },
     { id: 3, x: 620, y: 145, radius: 40 },
-    { id: 4, x: 100, y: 35, radius: 40 },
+    { id: 4, x: 100, y: 2055, radius: 40 },
+    { id: 5, x: 500, y: 55, radius: 40 },
+    { id: 6, x: 1040, y: 135, radius: 40 },
+    { id: 7, x: 900, y: 235, radius: 40 },
+    { id: 8, x: 300, y: 305, radius: 40 },
+    { id: 9, x: 990, y: 585, radius: 40 },
   ];
 
   let wheel = {
@@ -423,11 +428,13 @@ export default function GameCanvas({ socket, nickname }) {
 
           // if selected, draw circle around ringer
           if (selectedRinger && selectedRinger.id === ringer.id) {
+            p.push();
             p.noFill();
             p.stroke(255, 0, 0, 150);
             p.strokeWeight(3);
             // draw circle centered around ringer cords
             p.ellipse(ringer.x, ringer.y, 110, 110);
+            p.pop();
           }
 
           // // the sand
@@ -443,8 +450,7 @@ export default function GameCanvas({ socket, nickname }) {
         // call handle player movement func
         p.handleMovement();
 
-        // call handle wheel func
-        p.handleWheel();
+        
 
         // update & draw horseshoe trajectory if its active
         // loop thru and update all active throws in flight
@@ -514,14 +520,6 @@ export default function GameCanvas({ socket, nickname }) {
           // p.fill(255);
           // p.noStroke();
           // p.rect(player.x, player.y, 40, 40);
-
-          // assign a random sprite index once per player so it dont reshuffle every frame
-          if (playerSpriteIndexRef[id] === undefined) {
-            playerSpriteIndexRef[id] = Math.floor(
-              Math.random() * charImgs.length,
-            );
-          }
-
           // deyermine facing direction by comparing curr X to prev X pos
           let prevX = prevPlayerXRef[id] ?? player.x;
           if (player.x > prevX) {
@@ -542,7 +540,9 @@ export default function GameCanvas({ socket, nickname }) {
             p.scale(-1, 1);
           }
 
-          let assignedImg = charImgs[playerSpriteIndexRef[id]];
+          //assigned via the server so its the same across all clients 
+          let spriteIdx = player.spriteIndex ?? 0;
+          let assignedImg = charImgs[spriteIdx];
           if (assignedImg) {
             p.imageMode(p.CENTER);
             p.image(assignedImg, 0, 0, 240, 240);
@@ -560,6 +560,10 @@ export default function GameCanvas({ socket, nickname }) {
           // p.textAlign(p.CENTER, p.TOP);
           p.text(player.nickname, player.x, player.y - 110);
         });
+
+        // call handle wheel func
+        p.handleWheel();
+
       };
     };
 

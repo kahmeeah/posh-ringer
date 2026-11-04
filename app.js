@@ -53,6 +53,7 @@ io.on("connection", (socket) => {
       nickname: nickname,
       x: 100,
       y: 100,
+      spriteIndex: Math.floor(Math.random() * 4),//assign sprite
     };
     // emit client's nickname and location to everyone
     io.emit("update-players", players);
