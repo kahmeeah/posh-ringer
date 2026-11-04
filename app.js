@@ -14,12 +14,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(express.static(path.join(__dirname, '../client/dist')));
+// Serve static assets from the root 'dist' folder
+app.use(express.static(path.join(__dirname, 'dist')));
 
-// Express 5 named wildcard (matches root '/' and all sub-routes)
-app.get('{*splat}', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+// SPA fallback for Express 5
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
+
 
 app.use(cors());
 app.use(express.json());
